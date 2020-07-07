@@ -1,0 +1,37 @@
+#!/usr/bin/env node
+
+"use strict";
+var __importDefault =
+  (this && this.__importDefault) ||
+  function (mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
+Object.defineProperty(exports, "__esModule", { value: true });
+const path_1 = require("path");
+const docset_creator_1 = __importDefault(require("../dist/docset-creator"));
+let options = require(path_1.join(process.cwd(), "src", "options"));
+const outputPath = path_1.join(process.cwd(), "dist");
+const docsPath = path_1.join(process.cwd(), "docs");
+const iconsDirPath = path_1.join(process.cwd(), "src");
+const addToTopDirPath = path_1.join(process.cwd(), "src", "add_to_top");
+const addToBottomDirPath = path_1.join(process.cwd(), "src", "add_to_bottom");
+if (options) {
+  if (options.default) {
+    options = options.default;
+  }
+} else {
+  console.error(
+    "The options file exists but no options are available... did you forget to export the options?"
+  );
+  process.exit(1);
+}
+docset_creator_1.default(
+  Object.assign(Object.assign({}, options), {
+    iconsDirPath,
+    outputPath,
+    docsPath,
+    addToTopDirPath,
+    addToBottomDirPath,
+    logToConsole: true,
+  })
+);

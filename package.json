@@ -1,0 +1,35 @@
+{
+  "name": "docset-creator",
+  "version": "0.0.3",
+  "description": "A general purprose docset creator utility",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "bin": {
+    "docset-creator": "./bin/docset-creator-cli"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:jhudson8/docset-creator.git"
+  },
+  "author": "Joe Hudson",
+  "license": "MIT",
+  "scripts": {
+    "prepublish": "npm run build",
+    "build": "tsc",
+    "debug": "npm run build && npm run watch-debug",
+    "test": "jest --forceExit --coverage --verbose"
+  },
+  "dependencies": {
+    "@types/fs-extra": "^9.0.1",
+    "fs-extra": "^9.0.1",
+    "recursive-copy": "^2.0.10",
+    "rimraf": "^3.0.2",
+    "sql-wasm": "^1.1.4"
+  },
+  "devDependencies": {
+    "@types/node": "^14.0.18",
+    "@types/rimraf": "^3.0.0",
+    "eslint": "^7.4.0",
+    "typescript": "^3.9.6"
+  }
+}
