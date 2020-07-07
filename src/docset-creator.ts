@@ -40,7 +40,7 @@ export default async function (options: CreatorFunctionOptions): Promise<void> {
 
   const log = (...args: any[]) => {
     if (options.logToConsole) {
-      console.log(args);
+      console.log(...args);
     }
   };
 
