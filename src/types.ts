@@ -1,3 +1,81 @@
+export interface Entries {
+  Annotation?: Record<string, string>;
+  Attribute?: Record<string, string>;
+  Binding?: Record<string, string>;
+  Builtin?: Record<string, string>;
+  Callback?: Record<string, string>;
+  Category?: Record<string, string>;
+  Class?: Record<string, string>;
+  Command?: Record<string, string>;
+  Component?: Record<string, string>;
+  Constant?: Record<string, string>;
+  Constructor?: Record<string, string>;
+  Define?: Record<string, string>;
+  Delegate?: Record<string, string>;
+  Diagram?: Record<string, string>;
+  Directive?: Record<string, string>;
+  Element?: Record<string, string>;
+  Entry?: Record<string, string>;
+  Enum?: Record<string, string>;
+  Environment?: Record<string, string>;
+  Error?: Record<string, string>;
+  Event?: Record<string, string>;
+  Exception?: Record<string, string>;
+  Extension?: Record<string, string>;
+  Field?: Record<string, string>;
+  File?: Record<string, string>;
+  Filter?: Record<string, string>;
+  Framework?: Record<string, string>;
+  Function?: Record<string, string>;
+  Global?: Record<string, string>;
+  Guide?: Record<string, string>;
+  Hook?: Record<string, string>;
+  Instance?: Record<string, string>;
+  Instruction?: Record<string, string>;
+  Interface?: Record<string, string>;
+  Keyword?: Record<string, string>;
+  Library?: Record<string, string>;
+  Literal?: Record<string, string>;
+  Macro?: Record<string, string>;
+  Method?: Record<string, string>;
+  Mixin?: Record<string, string>;
+  Modifier?: Record<string, string>;
+  Module?: Record<string, string>;
+  Namespace?: Record<string, string>;
+  Notation?: Record<string, string>;
+  Object?: Record<string, string>;
+  Operator?: Record<string, string>;
+  Option?: Record<string, string>;
+  Package?: Record<string, string>;
+  Parameter?: Record<string, string>;
+  Plugin?: Record<string, string>;
+  Procedure?: Record<string, string>;
+  Property?: Record<string, string>;
+  Protocol?: Record<string, string>;
+  Provider?: Record<string, string>;
+  Provisioner?: Record<string, string>;
+  Query?: Record<string, string>;
+  Record?: Record<string, string>;
+  Resource?: Record<string, string>;
+  Sample?: Record<string, string>;
+  Section?: Record<string, string>;
+  Service?: Record<string, string>;
+  Setting?: Record<string, string>;
+  Shortcut?: Record<string, string>;
+  Statement?: Record<string, string>;
+  Struct?: Record<string, string>;
+  Style?: Record<string, string>;
+  Subroutine?: Record<string, string>;
+  Tag?: Record<string, string>;
+  Test?: Record<string, string>;
+  Trait?: Record<string, string>;
+  Type?: Record<string, string>;
+  Union?: Record<string, string>;
+  Value?: Record<string, string>;
+  Variable?: Record<string, string>;
+  Word?: Record<string, string>;
+}
+
 // all known docset entry types
 export type DocsetEntryType =
   | "Annotation"
@@ -76,6 +154,39 @@ export type DocsetEntryType =
   | "Variable"
   | "Word";
 
+export interface SelectorHandler {
+  (data: SelectorHandlerBrowserData): Promise<Entries | void>;
+}
+
+export interface SelectorHandlerBrowserData {
+  attr: (key: string) => Promise<string>;
+  text: () => Promise<string>;
+  single: (selector: string) => Promise<BrowserData>;
+  all: (selector: string) => Promise<BrowserData[]>;
+  addTo: (selector: SubSelector, entries: Entries) => Promise<Entries>;
+  goTo: (url: string, handler: Selector) => Promise<Entries>;
+}
+
+export interface BrowserData {
+  attr: (key: string) => Promise<string>;
+  innerText: () => Promise<string>;
+  outerHTML: () => Promise<string>;
+  single: (selector: string) => Promise<BrowserData>;
+  all: (selector: string) => Promise<BrowserData[]>;
+  addTo: (selector: SubSelector, entries: Entries) => Promise<Entries>;
+  goTo: (url: string, waitFor?: string) => Promise<BrowserData>;
+}
+
+export interface SubSelector {
+  selector: string;
+  value: (data: BrowserData) => Promise<Entries>;
+}
+
+export interface Selector extends SubSelector {
+  url: string;
+  waitFor?: string;
+}
+
 export interface Options {
   // the name of the index file e.g. "index.html"
   indexFileName?: string;
@@ -95,84 +206,10 @@ export interface Options {
   docsetPlatformFamily?: string;
   // Dash plist.info value for website url
   fallbackUrl?: string;
+  // any additionl selectors to populate entries
+  selectors?: Selector[];
   // all docset entries
-  entries: {
-    Annotation?: string[];
-    Attribute?: string[];
-    Binding?: string[];
-    Builtin?: string[];
-    Callback?: string[];
-    Category?: string[];
-    Class?: string[];
-    Command?: string[];
-    Component?: string[];
-    Constant?: string[];
-    Constructor?: string[];
-    Define?: string[];
-    Delegate?: string[];
-    Diagram?: string[];
-    Directive?: string[];
-    Element?: string[];
-    Entry?: string[];
-    Enum?: string[];
-    Environment?: string[];
-    Error?: string[];
-    Event?: string[];
-    Exception?: string[];
-    Extension?: string[];
-    Field?: string[];
-    File?: string[];
-    Filter?: string[];
-    Framework?: string[];
-    Function?: string[];
-    Global?: string[];
-    Guide?: string[];
-    Hook?: string[];
-    Instance?: string[];
-    Instruction?: string[];
-    Interface?: string[];
-    Keyword?: string[];
-    Library?: string[];
-    Literal?: string[];
-    Macro?: string[];
-    Method?: string[];
-    Mixin?: string[];
-    Modifier?: string[];
-    Module?: string[];
-    Namespace?: string[];
-    Notation?: string[];
-    Object?: string[];
-    Operator?: string[];
-    Option?: string[];
-    Package?: string[];
-    Parameter?: string[];
-    Plugin?: string[];
-    Procedure?: string[];
-    Property?: string[];
-    Protocol?: string[];
-    Provider?: string[];
-    Provisioner?: string[];
-    Query?: string[];
-    Record?: string[];
-    Resource?: string[];
-    Sample?: string[];
-    Section?: string[];
-    Service?: string[];
-    Setting?: string[];
-    Shortcut?: string[];
-    Statement?: string[];
-    Struct?: string[];
-    Style?: string[];
-    Subroutine?: string[];
-    Tag?: string[];
-    Test?: string[];
-    Trait?: string[];
-    Type?: string[];
-    Union?: string[];
-    Value?: string[];
-    Variable?: string[];
-    Word?: string[];
-  };
+  entries?: Entries;
 }
 
 export interface CreatorFunctionOptions extends Options {
@@ -188,4 +225,8 @@ export interface CreatorFunctionOptions extends Options {
   addToTopDirPath?: string;
   // absolute path for files that contain content that should be appended to the bottom of docs files
   addToBottomDirPath?: string;
+  // `true` if we just output the entries
+  dryRun?: boolean;
+  // chrome executable path if using selectors
+  chromeExePath?: string;
 }

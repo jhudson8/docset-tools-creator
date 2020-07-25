@@ -1,5 +1,15 @@
 import { join } from "path";
 import docsetCreator from "./docset-creator";
+const yargs = require("yargs");
+
+const argv = yargs
+  .option("dry-run", {
+    type: "boolean",
+    description: "Only output the docset entries and don't create the docset",
+  })
+  .option("chrome-exe-path", {
+    description: "full path to chrome executable if selectors are used",
+  }).argv;
 
 let options = require(join(process.cwd(), "src", "options"));
 const outputPath = join(process.cwd(), "dist");
@@ -26,4 +36,8 @@ docsetCreator({
   addToTopDirPath,
   addToBottomDirPath,
   logToConsole: true,
-});
+  dryRun: argv["dry-run"],
+  chromeExePath: argv["chrome-exe-path"],
+})
+  .catch((e) => console.error(e))
+  .then(() => "process complete");
