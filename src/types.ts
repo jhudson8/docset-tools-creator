@@ -1,4 +1,4 @@
-export interface Entries {
+export interface DocsetEntries {
   Annotation?: Record<string, string>;
   Attribute?: Record<string, string>;
   Binding?: Record<string, string>;
@@ -154,36 +154,46 @@ export type DocsetEntryType =
   | "Variable"
   | "Word";
 
+/* handler function used to navigate to an HTML file and return associated docset entries */
 export interface SelectorHandler {
-  (data: SelectorHandlerBrowserData): Promise<Entries | void>;
+  (data: BrowserData): Promise<DocsetEntries | void>;
 }
 
-export interface SelectorHandlerBrowserData {
-  attr: (key: string) => Promise<string>;
-  text: () => Promise<string>;
-  single: (selector: string) => Promise<BrowserData>;
-  all: (selector: string) => Promise<BrowserData[]>;
-  addTo: (selector: SubSelector, entries: Entries) => Promise<Entries>;
-  goTo: (url: string, handler: Selector) => Promise<Entries>;
-}
-
+/* context object provided to the selector handler */
 export interface BrowserData {
+  /* return the element attribute as a promise */
   attr: (key: string) => Promise<string>;
+  /* return the element attribute as a promise */
   innerText: () => Promise<string>;
+  /* return the element outer html as a promise */
   outerHTML: () => Promise<string>;
+  /* return a BrowserData representing a `querySelector` value using the current element as the root as a promise */
   single: (selector: string) => Promise<BrowserData>;
+  /* return a BrowserData array representing a `querySelectorAll` value using the current element as the root as a promise */
   all: (selector: string) => Promise<BrowserData[]>;
-  addTo: (selector: SubSelector, entries: Entries) => Promise<Entries>;
+  /* using the selector value, execute the handler function with the selector value and append the items to the entries provided as the 2nd parameter
+    and return the aggregated results */
+  addTo: (
+    selector: SubSelector,
+    entries: DocsetEntries
+  ) => Promise<DocsetEntries>;
+  /* navigate to a new URL */
   goTo: (url: string, waitFor?: string) => Promise<BrowserData>;
 }
 
+/* selector data provided to the `addTo` function of `BrowserData` */
 export interface SubSelector {
+  /* the selector value */
   selector: string;
-  value: (data: BrowserData) => Promise<Entries>;
+  /* the handler function provided called for each selector match */
+  value: (data: BrowserData) => Promise<DocsetEntries>;
 }
 
+/* main selector object provided as the `selectors` options value */
 export interface Selector extends SubSelector {
+  /* the URL to navigate to */
   url: string;
+  /* optional element selector to wait before processing */
   waitFor?: string;
 }
 
@@ -209,7 +219,7 @@ export interface Options {
   // any additionl selectors to populate entries
   selectors?: Selector[];
   // all docset entries
-  entries?: Entries;
+  entries?: DocsetEntries;
 }
 
 export interface CreatorFunctionOptions extends Options {

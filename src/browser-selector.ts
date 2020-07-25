@@ -1,7 +1,7 @@
 import {
   CreatorFunctionOptions,
   SubSelector,
-  Entries,
+  DocsetEntries,
   BrowserData,
 } from "./types";
 import puppeteer, { WrapElementHandle, ElementHandle } from "puppeteer-core";
@@ -18,9 +18,9 @@ interface BrowserDataOptions {
 }
 
 export default async function (
-  inputEntries: Entries,
+  inputEntries: DocsetEntries,
   options: CreatorFunctionOptions
-): Promise<Entries> {
+): Promise<DocsetEntries> {
   if (!options.selectors || options.selectors.length === 0) {
     return inputEntries;
   }
@@ -154,7 +154,7 @@ export default async function (
       return rtn;
     };
 
-    const union = (a: Entries, b: Entries): Entries => {
+    const union = (a: DocsetEntries, b: DocsetEntries): DocsetEntries => {
       a = a || {};
       b = b || {};
       const anyA = a as any;
@@ -244,8 +244,8 @@ export default async function (
         },
         addTo: async (
           selector: SubSelector,
-          value?: Entries
-        ): Promise<Entries> => {
+          value?: DocsetEntries
+        ): Promise<DocsetEntries> => {
           value = value || {};
           const rtn = await processSelector(selector, options);
           return union(value, rtn);
