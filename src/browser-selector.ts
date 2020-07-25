@@ -274,6 +274,7 @@ export default async function (
       });
       union(entries, value);
     }
+
     options.entries = union(options.entries, entries);
 
     await browser.close();

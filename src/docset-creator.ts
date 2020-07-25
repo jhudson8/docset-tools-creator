@@ -101,6 +101,7 @@ export default async function (options: CreatorFunctionOptions): Promise<void> {
         if (_path.startsWith("/")) {
           _path = _path.replace(/^\//, "");
         }
+        _path = _path.replace(/\\/g, "/");
         fileRefs.push({ type: type as DocsetEntryType, path: _path, name });
         commands.push(
           `INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES ('${escape(
@@ -135,7 +136,7 @@ export default async function (options: CreatorFunctionOptions): Promise<void> {
         <key>isDashDocset</key>
         <true/>
         <key>DashDocSetFamily</key>
-        <string>dashtoc</string>
+        <string>dashIndexFilePath</string>
         <key>${indexFilePath}</key>
         <string>docs/index.html</string>
         <key>isJavaScriptEnabled</key><${
@@ -172,64 +173,54 @@ export default async function (options: CreatorFunctionOptions): Promise<void> {
     }
 
     // prefix / suffix
-    const addToFile = (path: string, top: boolean) => {
-      const sourcePath = join(top ? addToTopDirPath : addToBottomDirPath, path);
-      const destPath = join(outputDocsPath, path);
-      const srcData = fs.readFileSync(destPath, { encoding: "utf8" });
-      const deltaData = fs.readFileSync(sourcePath, { encoding: "utf8" });
-      const newData = top
-        ? deltaData + "\n" + srcData
-        : srcData + "\n" + deltaData;
-      fs.writeFileSync(destPath, newData, { encoding: "utf8" });
-    };
-
     const checkAdds = (path: string, top: boolean) => {
       const base = top ? addToTopDirPath : addToBottomDirPath;
       if (!base) {
         return;
       }
+      const deltaPath = path ? join(base, path) : base;
 
-      const _path = path ? join(base, path) : base;
-      if (!fs.existsSync(_path)) {
-        return;
-      }
-
-      const contents = fs.readdirSync(_path);
-      for (let i = 0; i < contents.length; i++) {
-        const name = contents[i];
-        const stats = fs.statSync(join(_path, name));
+      const outputBasePathWithPrefix = path
+        ? join(outputDocsPath, path)
+        : outputDocsPath;
+      const docsContents = fs.readdirSync(outputBasePathWithPrefix);
+      for (let j = 0; j < docsContents.length; j++) {
+        const name = docsContents[j];
+        const outputFilePath = join(outputBasePathWithPrefix, name);
+        const stats = fs.statSync(outputFilePath);
         if (stats.isFile()) {
-          if (name.match(/\*\.(.*)/)) {
-            // any file with this prefix
-            const index: Record<string, boolean> = {};
-            fileRefs.forEach(({ path }) => {
-              if (path.startsWith("#")) {
-                path = indexFilePath + path;
-              }
-
-              // make sure the file is valid
-              path = path.replace(/#.*/, "");
-              path = normalize(join(outputDocsPath, path));
-              if (!fs.existsSync(path)) {
-                console.error("Invalid path: ", path);
-                throw new Error(`${path} not found`);
-              } else if (!index[path]) {
-                index[path] = true;
-                // manually do these changes
-                const srcData = fs.readFileSync(path, { encoding: "utf8" });
-                const deltaData = fs.readFileSync(join(_path, name), {
-                  encoding: "utf8",
-                });
-                const newData = top
-                  ? deltaData + "\n" + srcData
-                  : srcData + "\n" + deltaData;
-                fs.writeFileSync(path, newData, { encoding: "utf8" });
-                log("appending to: ", path);
-              }
+          const ext = name.match(/\.([^.]+)$/)[1];
+          let matchPath;
+          // exact match
+          const exactMatchPath = join(deltaPath, name);
+          if (existsSync(exactMatchPath)) {
+            matchPath = exactMatchPath;
+          }
+          if (!matchPath) {
+            const dirWildcardMatch = join(deltaPath, "*." + ext);
+            if (existsSync(dirWildcardMatch)) {
+              matchPath = dirWildcardMatch;
+            }
+          }
+          if (!matchPath) {
+            const ext = name.match(/\.([^.]+)$/)[1];
+            const allWildcardMatch = join(base, "_all", "*." + ext);
+            if (existsSync(allWildcardMatch)) {
+              matchPath = allWildcardMatch;
+            }
+          }
+          if (matchPath) {
+            // manually do these changes
+            const srcData = fs.readFileSync(outputFilePath, {
+              encoding: "utf8",
             });
-          } else {
-            // copy
-            addToFile(path ? join(path, name) : name, top);
+            const deltaData = fs.readFileSync(matchPath, {
+              encoding: "utf8",
+            });
+            const newData = top
+              ? deltaData + "\n" + srcData
+              : srcData + "\n" + deltaData;
+            fs.writeFileSync(outputFilePath, newData, { encoding: "utf8" });
           }
         } else {
           checkAdds(path ? join(path, name) : name, top);
@@ -245,11 +236,12 @@ export default async function (options: CreatorFunctionOptions): Promise<void> {
         path = join(outputDocsPath, indexFilePath) + path;
       }
       // make sure the file is valid
-      path = path.replace(/#.*/, "");
       path = normalize(join(outputDocsPath, path));
-      if (!fs.existsSync(path)) {
+      const pathToCheck = path.replace(/#.*/, "");
+      if (!fs.existsSync(pathToCheck)) {
         throw new Error(`${path} not found`);
       }
+      path = "file://" + encodeURI(path.replace(/\\/g, "/"));
       console.log(`${type} > ${name}\n\t${path}`);
     });
   }
