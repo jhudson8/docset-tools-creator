@@ -135,10 +135,8 @@ export default async function (options: CreatorFunctionOptions): Promise<void> {
         <string>${docsetPlatformFamily}</string>
         <key>isDashDocset</key>
         <true/>
-        <key>DashDocSetFamily</key>
-        <string>dashIndexFilePath</string>
-        <key>${indexFilePath}</key>
-        <string>docs/index.html</string>
+        <key>dashIndexFilePath</key>
+        <string>${indexFilePath}</string>
         <key>isJavaScriptEnabled</key><${
           isJavascriptEnabled ? "true" : "false"
         }/>${
@@ -242,7 +240,7 @@ export default async function (options: CreatorFunctionOptions): Promise<void> {
         throw new Error(`${path} not found`);
       }
       path = "file://" + encodeURI(path.replace(/\\/g, "/"));
-      console.log(`${type} > ${name}\n\t${path}`);
+      console.log(type + " > " + name + "\n\t" + path);
     });
   }
 }

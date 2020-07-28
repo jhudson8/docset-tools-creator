@@ -136,6 +136,11 @@ export default async function (
           const typeEntries = (value as any)[type];
           for (let name in typeEntries) {
             let value = typeEntries[name];
+            if (!value) {
+              console.error("no url provided for " + name);
+              delete typeEntries[name];
+              continue;
+            }
             if (!value.match(/^[a-z]*:\/\//)) {
               // it's a local reference
               if (value.startsWith("#")) {
