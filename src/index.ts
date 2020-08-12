@@ -1,2 +1,2 @@
-export { Options, CreatorFunctionOptions } from "./types";
-export { default } from "./docset-creator";
+export * from "./types";
+export { default } from "./engine";

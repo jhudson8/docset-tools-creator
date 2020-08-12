@@ -1,45 +1,43 @@
 import createSqlWasm, { SQLWasm, Database } from "sql-wasm";
 import { join, normalize } from "path";
 import fs, { existsSync, copy } from "fs-extra";
-import rimraf from "rimraf";
-import { CreatorFunctionOptions, DocsetEntryType } from "./types";
-import browserSelector from "./browser-selector";
 // the following doesn't have a type definition
 const recursiveCopy = require("recursive-copy");
+import { Options } from "./types";
+import { unionEntries, normalizePath, rmdir } from "./util";
+import { DocsetEntryType } from "docset-tools-types";
 
-function escape(value: string) {
-  return value.replace(/'/g, "''");
-}
-
-export default async function (options: CreatorFunctionOptions): Promise<void> {
+export default async function (options: Options, argv: any): Promise<void> {
   const {
-    iconsDirPath,
+    iconsPath,
     docsPath,
-    excludePathPrefix,
-    includePathPrefix,
-    docsetIdentifier,
     isJavascriptEnabled,
     docsetPlatformFamily,
     fallbackUrl,
     outputPath,
-    addToTopDirPath,
-    addToBottomDirPath,
-    selectors,
+    plugins,
   } = options;
-  let entries = options.entries;
-  const indexFileName = options.indexFileName || "index.html";
+  let { docsetIdentifier } = options;
+  let entries = options.entries || {};
+  let indexFileName = options.indexFileName || "index.html";
+  if (options.hasOwnProperty("indexFileName") && !options.indexFileName) {
+    indexFileName = undefined;
+  }
   const indexFilePath = normalize(
     options.indexFileDirPath
       ? join(options.indexFileDirPath, indexFileName)
       : indexFileName
   ).replace(/\\/g, "/");
+  if (!docsetIdentifier) {
+    docsetIdentifier = require(join(process.cwd(), "package.json")).name;
+  }
   const docsetFileName = docsetIdentifier + ".docset";
   const outputBasePath = join(outputPath, docsetFileName);
   const outputContentsPath = join(outputBasePath, "Contents");
   const outputResourcesPath = join(outputContentsPath, "Resources");
   const outputDocsPath = join(outputResourcesPath, "Documents");
   const docsetName = options.docsetName || docsetIdentifier;
-  const dryRun = options.dryRun;
+  const dryRun = argv["dry-run"];
 
   const log = (...args: any[]) => {
     if (options.logToConsole) {
@@ -47,26 +45,41 @@ export default async function (options: CreatorFunctionOptions): Promise<void> {
     }
   };
 
-  if (dryRun) {
-    if (selectors) {
-      entries = await browserSelector(entries, options);
+  let tmpCount = 0;
+  const parentTmpPath = join(process.cwd(), "._docset_tmp");
+  const createTmpFolder = async (): Promise<string> => {
+    tmpCount++;
+    const path = join(parentTmpPath, tmpCount.toString());
+    return path;
+  };
+
+  const include = async ({ path }: { path: string }) => {
+    // copy the content to the output directory
+    if (!dryRun) {
+      await recursiveCopy(path, outputDocsPath);
     }
-    console.log(entries);
-    return;
-  } else {
-    try {
-      log("deleting ", outputPath);
-      rimraf.sync(outputPath);
-    } catch (e) {
-      console.error(e);
+  };
+
+  try {
+    for (let i = 0; i < plugins.length; i++) {
+      const plugin = plugins[i];
+      const data = await plugin.plugin.execute({
+        args: argv,
+        createTmpFolder,
+        include,
+        pluginOptions: plugin.options,
+        mainOptions: options,
+        workingDir: process.cwd(),
+      });
+      entries = unionEntries(entries, data.entries);
+      // FIXME add to plist
     }
 
-    if (selectors) {
-      entries = await browserSelector(entries, options);
+    if (docsPath) {
+      const fullDocsPath = normalizePath(docsPath);
+      log("copying from " + fullDocsPath + " to " + outputDocsPath);
+      await recursiveCopy(fullDocsPath, outputDocsPath);
     }
-
-    log("copying from " + docsPath + " to " + outputDocsPath);
-    await recursiveCopy(docsPath, outputDocsPath);
 
     log("creating index");
     const wasmPath = require.resolve("sql-wasm/dist/sqlite3.wasm");
@@ -85,12 +98,6 @@ export default async function (options: CreatorFunctionOptions): Promise<void> {
     Object.entries(entries).forEach(([type, entries]) => {
       Object.entries(entries).forEach(([name, path]) => {
         let _path = (path as any) as string;
-        if (excludePathPrefix && _path.startsWith(excludePathPrefix)) {
-          _path = _path.substring(excludePathPrefix.length);
-        }
-        if (includePathPrefix) {
-          _path = normalize(join(includePathPrefix, _path));
-        }
         _path = _path.replace(/[\\/]#/, "#").replace(/\\/g, "/");
         if (_path.endsWith("/")) {
           _path = _path + indexFileName;
@@ -152,16 +159,16 @@ export default async function (options: CreatorFunctionOptions): Promise<void> {
     await fs.writeFile(join(outputContentsPath, "info.plist"), infoPlistData);
 
     // icons
-    if (iconsDirPath) {
+    if (iconsPath) {
       log("copying icons...");
-      const iconPath = join(iconsDirPath, "icon.png");
+      const iconPath = join(iconsPath, "icon.png");
       const iconExists = existsSync(iconPath);
       if (iconExists) {
         await copy(iconPath, join(outputBasePath, "icon.png"));
       } else {
         console.error(iconPath + " does not exist");
       }
-      const icon2xPath = join(iconsDirPath, "icon@2x.png");
+      const icon2xPath = join(iconsPath, "icon@2x.png");
       const icon2xExists = existsSync(iconPath);
       if (icon2xExists) {
         await copy(icon2xPath, join(outputBasePath, "icon@2x.png"));
@@ -169,65 +176,6 @@ export default async function (options: CreatorFunctionOptions): Promise<void> {
         console.error(icon2xPath + " does not exist");
       }
     }
-
-    // prefix / suffix
-    const checkAdds = (path: string, top: boolean) => {
-      const base = top ? addToTopDirPath : addToBottomDirPath;
-      if (!base) {
-        return;
-      }
-      const deltaPath = path ? join(base, path) : base;
-
-      const outputBasePathWithPrefix = path
-        ? join(outputDocsPath, path)
-        : outputDocsPath;
-      const docsContents = fs.readdirSync(outputBasePathWithPrefix);
-      for (let j = 0; j < docsContents.length; j++) {
-        const name = docsContents[j];
-        const outputFilePath = join(outputBasePathWithPrefix, name);
-        const stats = fs.statSync(outputFilePath);
-        if (stats.isFile()) {
-          const ext = name.match(/\.([^.]+)$/)[1];
-          let matchPath;
-          // exact match
-          const exactMatchPath = join(deltaPath, name);
-          if (existsSync(exactMatchPath)) {
-            matchPath = exactMatchPath;
-          }
-          if (!matchPath) {
-            const dirWildcardMatch = join(deltaPath, "*." + ext);
-            if (existsSync(dirWildcardMatch)) {
-              matchPath = dirWildcardMatch;
-            }
-          }
-          if (!matchPath) {
-            const ext = name.match(/\.([^.]+)$/)[1];
-            const allWildcardMatch = join(base, "_all", "*." + ext);
-            if (existsSync(allWildcardMatch)) {
-              matchPath = allWildcardMatch;
-            }
-          }
-          if (matchPath) {
-            // manually do these changes
-            const srcData = fs.readFileSync(outputFilePath, {
-              encoding: "utf8",
-            });
-            const deltaData = fs.readFileSync(matchPath, {
-              encoding: "utf8",
-            });
-            const newData = top
-              ? deltaData + "\n" + srcData
-              : srcData + "\n" + deltaData;
-            fs.writeFileSync(outputFilePath, newData, { encoding: "utf8" });
-          }
-        } else {
-          checkAdds(path ? join(path, name) : name, top);
-        }
-      }
-    };
-
-    checkAdds(undefined, true);
-    checkAdds(undefined, false);
 
     fileRefs.forEach(({ type, name, path }) => {
       if (path.startsWith("#")) {
@@ -242,5 +190,11 @@ export default async function (options: CreatorFunctionOptions): Promise<void> {
       path = "file://" + encodeURI(path.replace(/\\/g, "/"));
       console.log(type + " > " + name + "\n\t" + path);
     });
+  } finally {
+    try {
+      await rmdir(parentTmpPath);
+    } catch (e) {
+      console.error(e);
+    }
   }
 }

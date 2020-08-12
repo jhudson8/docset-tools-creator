@@ -1,6 +1,6 @@
 {
-  "name": "docset-creator",
-  "version": "0.0.14",
+  "name": "docset-tools-creator",
+  "version": "0.0.1",
   "description": "A general purprose docset creator utility",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -29,10 +29,11 @@
     "yargs": "^15.4.1"
   },
   "devDependencies": {
-    "@types/node": "^14.0.18",
+    "@types/node": "^14.0.27",
     "@types/puppeteer-core": "^2.0.0",
     "@types/rimraf": "^3.0.0",
-    "eslint": "^7.4.0",
-    "typescript": "^3.9.6"
+    "docset-tools-types": "0.0.5",
+    "eslint": "^7.6.0",
+    "typescript": "^3.9.7"
   }
 }
