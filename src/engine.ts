@@ -1,36 +1,39 @@
-import createSqlWasm, { SQLWasm, Database } from "sql-wasm";
-import { join, normalize } from "path";
-import fs, { existsSync, copy } from "fs-extra";
+import createSqlWasm from "sql-wasm";
+import { join, normalize, basename } from "path";
+import fs, { existsSync, copy, ensureDirSync } from "fs-extra";
 // the following doesn't have a type definition
 const recursiveCopy = require("recursive-copy");
-import { Options } from "./types";
-import { unionEntries, normalizePath, rmdir } from "./util";
-import { DocsetEntryType } from "docset-tools-types";
+import { rmdir } from "./util";
+import {
+  DocsetEntryType,
+  normalizePath,
+  mergeEntries,
+  MainOptions,
+} from "docset-tools-types";
 
-export default async function (options: Options, argv: any): Promise<void> {
+export default async function (options: MainOptions, argv: any): Promise<void> {
   const {
     iconsPath,
     docsPath,
     isJavascriptEnabled,
     docsetPlatformFamily,
     fallbackUrl,
-    outputPath,
     plugins,
   } = options;
-  let { docsetIdentifier } = options;
+  let {
+    docsetIdentifier,
+    outputPath,
+    indexFileName,
+    indexFileDirPath,
+  } = options;
   let entries = options.entries || {};
-  let indexFileName = options.indexFileName || "index.html";
-  if (options.hasOwnProperty("indexFileName") && !options.indexFileName) {
-    indexFileName = undefined;
-  }
-  const indexFilePath = normalize(
-    options.indexFileDirPath
-      ? join(options.indexFileDirPath, indexFileName)
-      : indexFileName
-  ).replace(/\\/g, "/");
+  let indexFilePath;
+
   if (!docsetIdentifier) {
     docsetIdentifier = require(join(process.cwd(), "package.json")).name;
   }
+  outputPath = outputPath ? normalizePath(outputPath) : process.cwd();
+
   const docsetFileName = docsetIdentifier + ".docset";
   const outputBasePath = join(outputPath, docsetFileName);
   const outputContentsPath = join(outputBasePath, "Contents");
@@ -38,6 +41,9 @@ export default async function (options: Options, argv: any): Promise<void> {
   const outputDocsPath = join(outputResourcesPath, "Documents");
   const docsetName = options.docsetName || docsetIdentifier;
   const dryRun = argv["dry-run"];
+
+  await rmdir(outputBasePath);
+  await rmdir(outputBasePath + ".tgz");
 
   const log = (...args: any[]) => {
     if (options.logToConsole) {
@@ -53,27 +59,58 @@ export default async function (options: Options, argv: any): Promise<void> {
     return path;
   };
 
-  const include = async ({ path }: { path: string }) => {
+  const include = async ({
+    path,
+    rootDirName,
+  }: {
+    path: string;
+    rootDirName?: string;
+  }) => {
     // copy the content to the output directory
     if (!dryRun) {
-      await recursiveCopy(path, outputDocsPath);
+      const destPath = rootDirName
+        ? join(outputDocsPath, rootDirName)
+        : outputDocsPath;
+      await recursiveCopy(path, destPath);
     }
   };
 
+  const _options = {
+    ...options,
+    dryRun,
+  };
   try {
     for (let i = 0; i < plugins.length; i++) {
       const plugin = plugins[i];
       const data = await plugin.plugin.execute({
-        args: argv,
+        cliArgs: argv,
         createTmpFolder,
         include,
-        pluginOptions: plugin.options,
-        mainOptions: options,
+        pluginOptions: plugin.options || {},
+        mainOptions: _options,
         workingDir: process.cwd(),
       });
-      entries = unionEntries(entries, data.entries);
+      if (entries.index) {
+        if (!indexFileName && (plugin.useAsIndex || plugins.length === 1)) {
+          indexFileName = basename(entries.index);
+          indexFileDirPath = entries.index.replace(
+            /[\\\/]?[^\\\/]+[\\\/]?[^\\\/]?$/,
+            ""
+          );
+        }
+      }
+      entries = mergeEntries(entries, data.entries);
       // FIXME add to plist
     }
+
+    if (!indexFileName && !options.hasOwnProperty("indexFileName")) {
+      indexFileName = "index.html";
+    }
+    const indexFilePath = normalize(
+      options.indexFileDirPath
+        ? join(options.indexFileDirPath, indexFileName)
+        : indexFileName
+    ).replace(/\\/g, "/");
 
     if (docsPath) {
       const fullDocsPath = normalizePath(docsPath);
@@ -96,7 +133,7 @@ export default async function (options: Options, argv: any): Promise<void> {
       name: string;
     }[] = [];
     Object.entries(entries).forEach(([type, entries]) => {
-      Object.entries(entries).forEach(([name, path]) => {
+      function normalizePath(path: any) {
         let _path = (path as any) as string;
         _path = _path.replace(/[\\/]#/, "#").replace(/\\/g, "/");
         if (_path.endsWith("/")) {
@@ -109,13 +146,23 @@ export default async function (options: Options, argv: any): Promise<void> {
           _path = _path.replace(/^\//, "");
         }
         _path = _path.replace(/\\/g, "/");
-        fileRefs.push({ type: type as DocsetEntryType, path: _path, name });
-        commands.push(
-          `INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES ('${escape(
-            name
-          )}', '${escape(type)}', '${escape(_path)}');`
-        );
-      });
+        return _path;
+      }
+
+      if (type === "index") {
+        const _path = normalizePath(entries);
+        fileRefs.push({ type: null, path: _path, name: "index" });
+      } else {
+        Object.entries(entries).forEach(([name, path]) => {
+          const _path = normalizePath(path);
+          fileRefs.push({ type: type as DocsetEntryType, path: _path, name });
+          commands.push(
+            `INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES ('${escape(
+              name
+            )}', '${escape(type)}', '${escape(_path)}');`
+          );
+        });
+      }
     });
 
     for (let i = 0; i < commands.length; i++) {
@@ -125,6 +172,7 @@ export default async function (options: Options, argv: any): Promise<void> {
     // save to file
     const data = db.export();
     const buffer = Buffer.from(data);
+    ensureDirSync(outputResourcesPath);
     await fs.writeFile(join(outputResourcesPath, "docSet.dsidx"), buffer);
 
     // create info.plist
@@ -179,16 +227,21 @@ export default async function (options: Options, argv: any): Promise<void> {
 
     fileRefs.forEach(({ type, name, path }) => {
       if (path.startsWith("#")) {
-        path = join(outputDocsPath, indexFilePath) + path;
+        path = indexFilePath ? indexFilePath + path : path;
       }
       // make sure the file is valid
       path = normalize(join(outputDocsPath, path));
+      console.log(path);
       const pathToCheck = path.replace(/#.*/, "");
       if (!fs.existsSync(pathToCheck)) {
         throw new Error(`${path} not found`);
       }
       path = "file://" + encodeURI(path.replace(/\\/g, "/"));
-      console.log(type + " > " + name + "\n\t" + path);
+      if (type) {
+        console.log(type + " > " + name + "\n\t" + path);
+      } else {
+        console.log("[" + name + "]\n\t" + path);
+      }
     });
   } finally {
     try {

@@ -18,8 +18,8 @@ export function normalizePath(path: string) {
 }
 
 export function unionEntries(
-  a: DocsetEntries,
-  b: DocsetEntries
+  a?: DocsetEntries,
+  b?: DocsetEntries
 ): DocsetEntries {
   a = { ...(a || {}) };
   b = b || {};
