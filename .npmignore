@@ -5,3 +5,4 @@ tsconfig.json
 yarn.lock
 yarn.error
 node_modules
+package-lock.json
