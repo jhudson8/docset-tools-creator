@@ -52,6 +52,7 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
   };
 
   let tmpCount = 0;
+  const plistAdditions: Record<string, string[]> = {};
   const parentTmpPath = join(process.cwd(), "._docset_tmp");
   const createTmpFolder = async (): Promise<string> => {
     tmpCount++;
@@ -100,7 +101,14 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         }
       }
       entries = mergeEntries(entries, data.entries);
-      // FIXME add to plist
+      if (data.plist) {
+        Object.entries(data.plist).forEach(([key, value]) => {
+          if (!plistAdditions[key]) {
+            plistAdditions[key] = [];
+          }
+          plistAdditions[key].push(value);
+        });
+      }
     }
 
     if (!indexFileName && !options.hasOwnProperty("indexFileName")) {
@@ -200,10 +208,20 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         <key>DashDocSetFallbackURL</key>
         <string>${fallbackUrl}</string>`
         : ""
-    }
+    }${Object.entries(plistAdditions).map(
+      ([key, entries]) => `
+        <key>${key}</key>${entries.map(
+        (value) => `
+        <string>${value
+          .replace(/&/g, "&amp")
+          .replace(/</g, "&lt")
+          .replace(/>/g, "&gt")}</string>`
+      )}
+        `
+    )}
       </dict>
       </plist>
-    `;
+`;
     await fs.writeFile(join(outputContentsPath, "info.plist"), infoPlistData);
 
     // icons
