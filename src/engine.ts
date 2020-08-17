@@ -1,6 +1,7 @@
 import createSqlWasm from "sql-wasm";
 import { join, normalize, basename } from "path";
-import fs, { existsSync, copy, ensureDirSync } from "fs-extra";
+import fs, { existsSync, copy, ensureDirSync, ensureDir } from "fs-extra";
+import tar from "tar";
 // the following doesn't have a type definition
 const recursiveCopy = require("recursive-copy");
 import { rmdir } from "./util";
@@ -20,14 +21,9 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
     fallbackUrl,
     plugins,
   } = options;
-  let {
-    docsetIdentifier,
-    outputPath,
-    indexFileName,
-    indexFileDirPath,
-  } = options;
+  let { docsetIdentifier, outputPath } = options;
   let entries = options.entries || {};
-  let indexFilePath;
+  let indexFilePath = entries.index;
 
   if (!docsetIdentifier) {
     docsetIdentifier = require(join(process.cwd(), "package.json")).name;
@@ -57,6 +53,7 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
   const createTmpFolder = async (): Promise<string> => {
     tmpCount++;
     const path = join(parentTmpPath, tmpCount.toString());
+    await ensureDir(path);
     return path;
   };
 
@@ -92,12 +89,8 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         workingDir: process.cwd(),
       });
       if (entries.index) {
-        if (!indexFileName && (plugin.useAsIndex || plugins.length === 1)) {
-          indexFileName = basename(entries.index);
-          indexFileDirPath = entries.index.replace(
-            /[\\\/]?[^\\\/]+[\\\/]?[^\\\/]?$/,
-            ""
-          );
+        if (!indexFilePath && (plugin.useAsIndex || plugins.length === 1)) {
+          indexFilePath = entries.index;
         }
       }
       entries = mergeEntries(entries, data.entries);
@@ -111,14 +104,9 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
       }
     }
 
-    if (!indexFileName && !options.hasOwnProperty("indexFileName")) {
-      indexFileName = "index.html";
-    }
-    const indexFilePath = normalize(
-      options.indexFileDirPath
-        ? join(options.indexFileDirPath, indexFileName)
-        : indexFileName
-    ).replace(/\\/g, "/");
+    const indexPathParts = entries.index ? entries.index.split("/") : [];
+    let indexFileName = indexPathParts.pop() || "index.html";
+    let indexFileDirPath = indexPathParts.join("/");
 
     if (docsPath) {
       const fullDocsPath = normalizePath(docsPath);
@@ -147,8 +135,8 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         if (_path.endsWith("/")) {
           _path = _path + indexFileName;
         }
-        if (!_path.match(/^\.?\//) && options.indexFileDirPath) {
-          _path = normalize(join(options.indexFileDirPath, _path));
+        if (!_path.match(/^\.?\//) && indexFileDirPath) {
+          _path = normalize(join(indexFileDirPath, _path));
         }
         if (_path.startsWith("/")) {
           _path = _path.replace(/^\//, "");
@@ -261,6 +249,17 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         console.log("[" + name + "]\n\t" + path);
       }
     });
+
+    // tar it up
+    await tar.c(
+      {
+        gzip: true,
+        portable: true,
+        file: outputBasePath + ".tgz",
+        cwd: outputBasePath,
+      },
+      ["./"]
+    );
   } finally {
     try {
       await rmdir(parentTmpPath);
