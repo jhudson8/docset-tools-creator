@@ -1,6 +1,13 @@
 import createSqlWasm from "sql-wasm";
-import { join, normalize, basename } from "path";
-import fs, { existsSync, copy, ensureDirSync, ensureDir } from "fs-extra";
+import { join, normalize, extname } from "path";
+import fs, {
+  existsSync,
+  copy,
+  ensureDirSync,
+  ensureDir,
+  readdirSync,
+  statSync,
+} from "fs-extra";
 import tar from "tar";
 // the following doesn't have a type definition
 const recursiveCopy = require("recursive-copy");
@@ -11,6 +18,17 @@ import {
   mergeEntries,
   MainOptions,
 } from "docset-tools-types";
+
+interface AddToData {
+  path: string;
+  content: string;
+}
+
+function escape(value: string) {
+  if (value) {
+    return value.replace(/'/g, "''");
+  }
+}
 
 export default async function (options: MainOptions, argv: any): Promise<void> {
   const {
@@ -60,12 +78,72 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
   const include = async ({
     path,
     rootDirName,
+    appendToTop,
+    appendToBottom,
   }: {
     path: string;
     rootDirName?: string;
+    appendToTop?: Record<string, string>;
+    appendToBottom?: Record<string, string>;
   }) => {
     // copy the content to the output directory
     if (!dryRun) {
+      if (appendToTop || appendToBottom) {
+        // move to a new tmp dir to isolate
+        const tmpPath = await createTmpFolder();
+        await recursiveCopy(path, tmpPath);
+
+        function doFileAdd(fullPath: string, content: string, top: boolean) {
+          if (content) {
+            const srcData = fs.readFileSync(fullPath, {
+              encoding: "utf8",
+            });
+            const newData = top
+              ? content + "\n" + srcData
+              : srcData + "\n" + content;
+            fs.writeFileSync(fullPath, newData, { encoding: "utf8" });
+          }
+        }
+
+        // append to top and/or bottom
+        const checkAdds = (
+          subPath: string,
+          entries: Record<string, string>,
+          top: boolean
+        ) => {
+          if (!entries) {
+            return;
+          }
+
+          const fullPath = subPath ? join(tmpPath, subPath) : tmpPath;
+          const docsContents = readdirSync(fullPath);
+          for (let j = 0; j < docsContents.length; j++) {
+            const name = docsContents[j];
+            const childPath = join(fullPath, name);
+            const stats = statSync(childPath);
+            if (stats.isFile()) {
+              const relativeFilePath = subPath ? join(subPath, name) : name;
+              const fileExt = extname(childPath);
+              doFileAdd(childPath, entries[relativeFilePath], top);
+              doFileAdd(
+                childPath,
+                entries[(subPath ? subPath + "/" : "") + "*" + fileExt],
+                top
+              );
+              doFileAdd(childPath, entries["**" + fileExt], top);
+            } else if (stats.isDirectory()) {
+              const root = subPath ? join(subPath, name) : name;
+              checkAdds(root, entries, top);
+            }
+          }
+        };
+
+        checkAdds(undefined, appendToTop, true);
+        checkAdds(undefined, appendToBottom, false);
+
+        path = tmpPath;
+      }
+
       const destPath = rootDirName
         ? join(outputDocsPath, rootDirName)
         : outputDocsPath;
@@ -94,6 +172,8 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         }
       }
       entries = mergeEntries(entries, data.entries);
+      indexFilePath = entries.index;
+
       if (data.plist) {
         Object.entries(data.plist).forEach(([key, value]) => {
           if (!plistAdditions[key]) {
@@ -106,7 +186,6 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
 
     const indexPathParts = entries.index ? entries.index.split("/") : [];
     let indexFileName = indexPathParts.pop() || "index.html";
-    let indexFileDirPath = indexPathParts.join("/");
 
     if (docsPath) {
       const fullDocsPath = normalizePath(docsPath);
@@ -135,8 +214,8 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         if (_path.endsWith("/")) {
           _path = _path + indexFileName;
         }
-        if (!_path.match(/^\.?\//) && indexFileDirPath) {
-          _path = normalize(join(indexFileDirPath, _path));
+        if (_path.startsWith("#") && indexFilePath) {
+          _path = indexFilePath + _path;
         }
         if (_path.startsWith("/")) {
           _path = _path.replace(/^\//, "");
@@ -237,7 +316,6 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
       }
       // make sure the file is valid
       path = normalize(join(outputDocsPath, path));
-      console.log(path);
       const pathToCheck = path.replace(/#.*/, "");
       if (!fs.existsSync(pathToCheck)) {
         throw new Error(`${path} not found`);

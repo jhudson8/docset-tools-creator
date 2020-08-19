@@ -1,6 +1,6 @@
 {
   "name": "docset-tools-creator",
-  "version": "0.0.6",
+  "version": "0.0.9",
   "description": "A general purprose docset creator utility",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -27,6 +27,7 @@
     "rimraf": "^3.0.2",
     "sql-wasm": "^1.1.4",
     "tar": "^6.0.5",
+    "typedoc": "^0.17.0-3",
     "yargs": "^15.4.1"
   },
   "devDependencies": {
@@ -34,7 +35,7 @@
     "@types/puppeteer-core": "^2.0.0",
     "@types/rimraf": "^3.0.0",
     "@types/tar": "^4.0.3",
-    "docset-tools-types": "0.0.17",
+    "docset-tools-types": "0.0.19",
     "eslint": "^7.6.0",
     "typescript": "^3.9.7"
   }
