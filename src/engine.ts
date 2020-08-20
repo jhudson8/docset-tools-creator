@@ -122,7 +122,10 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
             const childPath = join(fullPath, name);
             const stats = statSync(childPath);
             if (stats.isFile()) {
-              const relativeFilePath = subPath ? join(subPath, name) : name;
+              const relativeFilePath = (subPath
+                ? join(subPath, name)
+                : name
+              ).replace(/\\/g, "/");
               const fileExt = extname(childPath);
               doFileAdd(childPath, entries[relativeFilePath], top);
               doFileAdd(
@@ -166,8 +169,12 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         mainOptions: _options,
         workingDir: process.cwd(),
       });
+
       if (entries.index) {
-        if (!indexFilePath && (plugin.useAsIndex || plugins.length === 1)) {
+        if (
+          indexFilePath === undefined &&
+          (plugin.useAsIndex || plugins.length === 1)
+        ) {
           indexFilePath = entries.index;
         }
       }
@@ -184,8 +191,9 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
       }
     }
 
-    const indexPathParts = entries.index ? entries.index.split("/") : [];
+    const indexPathParts = indexFilePath ? indexFilePath.split("/") : [];
     let indexFileName = indexPathParts.pop() || "index.html";
+    delete entries.index;
 
     if (docsPath) {
       const fullDocsPath = normalizePath(docsPath);
@@ -224,20 +232,15 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         return _path;
       }
 
-      if (type === "index") {
-        const _path = normalizePath(entries);
-        fileRefs.push({ type: null, path: _path, name: "index" });
-      } else {
-        Object.entries(entries).forEach(([name, path]) => {
-          const _path = normalizePath(path);
-          fileRefs.push({ type: type as DocsetEntryType, path: _path, name });
-          commands.push(
-            `INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES ('${escape(
-              name
-            )}', '${escape(type)}', '${escape(_path)}');`
-          );
-        });
-      }
+      Object.entries(entries).forEach(([name, path]) => {
+        const _path = normalizePath(path);
+        fileRefs.push({ type: type as DocsetEntryType, path: _path, name });
+        commands.push(
+          `INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES ('${escape(
+            name
+          )}', '${escape(type)}', '${escape(_path)}');`
+        );
+      });
     });
 
     for (let i = 0; i < commands.length; i++) {
@@ -260,13 +263,21 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         <key>CFBundleIdentifier</key>
         <string>${docsetIdentifier}</string>
         <key>CFBundleName</key>
-        <string>${docsetName}</string>
+        <string>${docsetName}</string>${
+      docsetPlatformFamily
+        ? `
         <key>DocSetPlatformFamily</key>
-        <string>${docsetPlatformFamily}</string>
+        <string>${docsetPlatformFamily}</string>`
+        : ""
+    }
         <key>isDashDocset</key>
-        <true/>
+        <true/>${
+          indexFilePath
+            ? `
         <key>dashIndexFilePath</key>
-        <string>${indexFilePath}</string>
+        <string>${indexFilePath}</string>`
+            : ""
+        }
         <key>isJavaScriptEnabled</key><${
           isJavascriptEnabled ? "true" : "false"
         }/>${
