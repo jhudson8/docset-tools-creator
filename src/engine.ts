@@ -327,7 +327,7 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
       }
       // make sure the file is valid
       path = normalize(join(outputDocsPath, path));
-      const pathToCheck = path.replace(/#.*/, "");
+      const pathToCheck = path.replace(/#.*/, "").replace(/\?.*/, "");
       if (!fs.existsSync(pathToCheck)) {
         throw new Error(`${path} not found`);
       }

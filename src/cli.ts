@@ -37,5 +37,8 @@ if (options.plugins) {
 argv = argv.argv;
 
 engine(options, argv)
-  .catch((e) => console.error(e))
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
   .then(() => "process complete");
