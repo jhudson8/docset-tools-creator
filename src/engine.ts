@@ -1,5 +1,6 @@
 import createSqlWasm from "sql-wasm";
 import { join, normalize, extname } from "path";
+import os from 'os';
 import fs, {
   existsSync,
   copy,
@@ -48,6 +49,7 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
   }
   outputPath = outputPath ? normalizePath(outputPath) : process.cwd();
 
+  const tempPath = join(os.tmpdir(), 'docset-' + (Math.floor(Math.random() * 1000));
   const docsetFileName = docsetIdentifier + ".docset";
   const outputBasePath = join(outputPath, docsetFileName);
   const outputContentsPath = join(outputBasePath, "Contents");
@@ -67,10 +69,9 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
 
   let tmpCount = 0;
   const plistAdditions: Record<string, string[]> = {};
-  const parentTmpPath = join(process.cwd(), "._docset_tmp");
   const createTmpFolder = async (): Promise<string> => {
     tmpCount++;
-    const path = join(parentTmpPath, tmpCount.toString());
+    const path = join(tempPath, tmpCount.toString());
     await ensureDir(path);
     return path;
   };
@@ -80,11 +81,13 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
     rootDirName,
     appendToTop,
     appendToBottom,
+    remove
   }: {
     path: string;
     rootDirName?: string;
     appendToTop?: Record<string, string>;
     appendToBottom?: Record<string, string>;
+    remove?: boolean;
   }) => {
     // copy the content to the output directory
     if (!dryRun) {
@@ -151,6 +154,10 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         ? join(outputDocsPath, rootDirName)
         : outputDocsPath;
       await recursiveCopy(path, destPath);
+
+      if (remove) {
+        await rmdir(path);
+      }
     }
   };
 
@@ -351,7 +358,7 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
     );
   } finally {
     try {
-      await rmdir(parentTmpPath);
+      await rmdir(tempPath);
     } catch (e) {
       console.error(e);
     }

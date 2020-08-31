@@ -1,6 +1,6 @@
 {
   "name": "docset-tools-creator",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "A general purprose docset creator utility",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -35,7 +35,7 @@
     "@types/puppeteer-core": "^2.0.0",
     "@types/rimraf": "^3.0.0",
     "@types/tar": "^4.0.3",
-    "docset-tools-types": "0.0.19",
+    "docset-tools-types": "^0.0.20",
     "eslint": "^7.6.0",
     "typescript": "^3.9.7"
   }
