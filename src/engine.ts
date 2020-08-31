@@ -1,6 +1,6 @@
 import createSqlWasm from "sql-wasm";
 import { join, normalize, extname } from "path";
-import os from 'os';
+import os from "os";
 import fs, {
   existsSync,
   copy,
@@ -49,7 +49,10 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
   }
   outputPath = outputPath ? normalizePath(outputPath) : process.cwd();
 
-  const tempPath = join(os.tmpdir(), 'docset-' + (Math.floor(Math.random() * 1000));
+  const tempPath = join(
+    os.tmpdir(),
+    "docset-" + Math.floor(Math.random() * 1000)
+  );
   const docsetFileName = docsetIdentifier + ".docset";
   const outputBasePath = join(outputPath, docsetFileName);
   const outputContentsPath = join(outputBasePath, "Contents");
@@ -81,7 +84,7 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
     rootDirName,
     appendToTop,
     appendToBottom,
-    remove
+    remove,
   }: {
     path: string;
     rootDirName?: string;
