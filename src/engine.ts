@@ -54,7 +54,10 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
     "docset-" + Math.floor(Math.random() * 1000)
   );
   const docsetFileName = docsetIdentifier + ".docset";
-  const outputBasePath = join(outputPath, docsetFileName);
+  const outputBasePath = join(
+    outputPath,
+    docsetFileName.replace(/[\\\/]/g, "_")
+  );
   const outputContentsPath = join(outputBasePath, "Contents");
   const outputResourcesPath = join(outputContentsPath, "Resources");
   const outputDocsPath = join(outputResourcesPath, "Documents");
@@ -338,14 +341,14 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
       // make sure the file is valid
       path = normalize(join(outputDocsPath, path));
       const pathToCheck = path.replace(/#.*/, "").replace(/\?.*/, "");
-      if (!fs.existsSync(pathToCheck)) {
-        throw new Error(`${path} not found`);
-      }
       path = "file://" + encodeURI(path.replace(/\\/g, "/"));
       if (type) {
         console.log(type + " > " + name + "\n\t" + path);
       } else {
         console.log("[" + name + "]\n\t" + path);
+      }
+      if (!fs.existsSync(pathToCheck)) {
+        throw new Error(`${path} not found`);
       }
     });
 
@@ -359,6 +362,8 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
       },
       ["./"]
     );
+
+    await rmdir(outputBasePath);
   } finally {
     try {
       await rmdir(tempPath);
