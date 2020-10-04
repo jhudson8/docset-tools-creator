@@ -1,4 +1,4 @@
-# docset-creator
+# docset-tools-creator
 
 Utility module used to create docsets. Supports
 
@@ -8,7 +8,7 @@ Utility module used to create docsets. Supports
 ## Installation
 
 ```
-yarn add docset-generator
+yarn add docset-tools-creator
 ```
 
 Create the direcoty
