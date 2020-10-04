@@ -35,7 +35,7 @@
     "@types/puppeteer-core": "^2.0.0",
     "@types/rimraf": "^3.0.0",
     "@types/tar": "^4.0.3",
-    "docset-tools-types": "^0.0.20",
+    "docset-tools-types": "^0.0.22",
     "eslint": "^7.6.0",
     "typescript": "^3.9.7"
   }

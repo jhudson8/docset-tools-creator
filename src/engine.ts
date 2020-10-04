@@ -74,7 +74,16 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
   };
 
   let tmpCount = 0;
-  const plistAdditions: Record<string, string[]> = {};
+  const plistAdditions: Record<string, any[]> = {};
+  if (options.plist) {
+    Object.entries(options.plist).forEach(([key, value]) => {
+      if (!plistAdditions[key]) {
+        plistAdditions[key] = [];
+      }
+      plistAdditions[key].push(value);
+    });
+  }
+
   const createTmpFolder = async (): Promise<string> => {
     tmpCount++;
     const path = join(tempPath, tmpCount.toString());
