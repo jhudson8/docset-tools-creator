@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:jhudson8/docset-creator.git"
+    "url": "git@github.com:jhudson8/docset-tools-creator.git"
   },
   "author": "Joe Hudson",
   "license": "MIT",
