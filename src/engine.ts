@@ -43,6 +43,7 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
   let { docsetIdentifier, outputPath } = options;
   let entries = options.entries || {};
   let indexFilePath = entries.index;
+  const keep = argv.keep;
 
   if (!docsetIdentifier) {
     docsetIdentifier = require(join(process.cwd(), "package.json")).name;
@@ -372,7 +373,9 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
       ["./"]
     );
 
-    await rmdir(outputBasePath);
+    if (!keep) {
+      await rmdir(outputBasePath);
+    }
   } finally {
     try {
       await rmdir(tempPath);

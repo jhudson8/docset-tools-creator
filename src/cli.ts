@@ -11,6 +11,11 @@ let argv = yargs
     alias: "c",
     type: "boolean",
     description: "config file name / path",
+  })
+  .option("keep", {
+    alias: "k",
+    type: "boolean",
+    description: "keep output directory",
   });
 const configFilePath = normalizePath(argv.argv.c || "docsetconfig.js");
 let options: MainOptions = require(configFilePath);
