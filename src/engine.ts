@@ -33,6 +33,7 @@ function escape(value: string) {
 
 export default async function (options: MainOptions, argv: any): Promise<void> {
   const {
+    indexPath,
     iconsPath,
     docsPath,
     isJavascriptEnabled,
@@ -42,7 +43,10 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
   } = options;
   let { docsetIdentifier, outputPath } = options;
   let entries = options.entries || {};
-  let indexFilePath = entries.index;
+  if (options.indexPath) {
+    entries.index = options.indexPath;
+  }
+  let indexFilePath = indexPath || entries.index;
   const keep = argv.keep;
 
   if (!docsetIdentifier) {
@@ -202,7 +206,6 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         }
       }
       entries = mergeEntries(entries, data.entries);
-      indexFilePath = entries.index;
 
       if (data.plist) {
         Object.entries(data.plist).forEach(([key, value]) => {
