@@ -48,6 +48,7 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
   }
   let indexFilePath = indexPath || entries.index;
   const keep = argv.keep;
+  const outputFileName = argv.file;
 
   if (!docsetIdentifier) {
     docsetIdentifier = require(join(process.cwd(), "package.json")).name;
@@ -61,7 +62,7 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
   const docsetFileName = docsetIdentifier + ".docset";
   const outputBasePath = join(
     outputPath,
-    docsetFileName.replace(/[\\\/]/g, "_")
+    outputFileName || docsetFileName.replace(/[\\\/]/g, "_")
   );
   const outputContentsPath = join(outputBasePath, "Contents");
   const outputResourcesPath = join(outputContentsPath, "Resources");
