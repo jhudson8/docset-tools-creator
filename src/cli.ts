@@ -33,8 +33,8 @@ if (options.plugins) {
   options.plugins = options.plugins.map((plugin) => {
     plugin = (plugin as any).default || plugin;
     return {
-      plugin: (plugin.plugin as any).default || plugin.plugin,
-      options: plugin.options,
+      ...plugin,
+      plugin: (plugin.plugin as any).default || plugin.plugin
     };
   });
 

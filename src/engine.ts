@@ -198,15 +198,16 @@ export default async function (options: MainOptions, argv: any): Promise<void> {
         workingDir: process.cwd(),
       });
 
-      if (entries.index) {
+      const _entries = data.entries;
+      if (_entries.index) {
         if (
           indexFilePath === undefined &&
           (plugin.useAsIndex || plugins.length === 1)
         ) {
-          indexFilePath = entries.index;
+          indexFilePath = _entries.index;
         }
       }
-      entries = mergeEntries(entries, data.entries);
+      entries = mergeEntries(entries, _entries);
 
       if (data.plist) {
         Object.entries(data.plist).forEach(([key, value]) => {
