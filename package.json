@@ -1,6 +1,6 @@
 {
   "name": "docset-tools-creator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A general purprose docset creator utility",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
