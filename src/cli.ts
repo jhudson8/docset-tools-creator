@@ -9,7 +9,7 @@ let argv = yargs
   })
   .option("config", {
     alias: "c",
-    type: "boolean",
+    type: "string",
     description: "config file name / path",
   })
   .option("keep", {
